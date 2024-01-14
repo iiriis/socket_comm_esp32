@@ -1,3 +1,7 @@
+#misc
+*.vscode
+
+
 # Prerequisites
 *.d
 
