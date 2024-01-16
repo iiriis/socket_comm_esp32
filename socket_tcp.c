@@ -15,7 +15,7 @@ SOCKET sockfd; // Global socket variable
 
 
 typedef struct {
-    uint32_t data;
+    uint64_t data;
     char name[30];
     float temperature;
 } myData;
@@ -57,19 +57,30 @@ int main() {
         return 1;
     }
 
+    int flag = 1;
+    int result = setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, (char *)&flag, sizeof(int));
+    if (result == SOCKET_ERROR) {
+        printf("Unable to set TCP_NODELAY option: %d\n", WSAGetLastError());
+        closesocket(sockfd);
+        WSACleanup();
+        return 1;
+    }
+
     signal(SIGINT, sigint_handler); // Register signal handler for SIGINT (Ctrl+C)
 
-    
+
     myData m1 = {0};
 
+    // Send data to the server
+    const char* data = "Hello from PC";
+    send(sockfd, data, strlen(data), 0);
+
     while (1) {
+
         char buffer[1024];
 
         clock_t start = clock(); // Start the clock
 
-        // Send data to the server
-        // const char* data = "Hello from client";
-        // send(sockfd, data, strlen(data), 0);
 
         // Receive response from the server
         int n = recv(sockfd, (char*)&m1, sizeof(myData), 0); 
@@ -80,9 +91,6 @@ int main() {
 
         clock_t end = clock(); // Stop the clock
         double elapsed_time = (double)(end - start); // Calculate elapsed time in mili seconds
-        printf("Response time: %.4f miliseconds\n", elapsed_time);
-
-        // Sleep(1000)
 
     }
 
