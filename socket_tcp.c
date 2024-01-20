@@ -13,7 +13,12 @@
 
 SOCKET sockfd; // Global socket variable
 
+int latency_stats[256];
+long total_packets;
 
+boolean is_Ctrl_C = TRUE;
+
+#pragma pack(1)
 typedef struct {
     uint64_t data;
     char name[30];
@@ -22,11 +27,10 @@ typedef struct {
 
 // Signal handler for SIGINT (Ctrl+C)
 void sigint_handler(int sig) {
-    printf("Exiting...\n");
-    closesocket(sockfd);
-    WSACleanup();
-    exit(0);
+    is_Ctrl_C = FALSE;
 }
+
+void print_statistics();
 
 int main() {
     WSADATA wsaData;
@@ -57,25 +61,15 @@ int main() {
         return 1;
     }
 
-    int flag = 1;
-    int result = setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, (char *)&flag, sizeof(int));
-    if (result == SOCKET_ERROR) {
-        printf("Unable to set TCP_NODELAY option: %d\n", WSAGetLastError());
-        closesocket(sockfd);
-        WSACleanup();
-        return 1;
-    }
-
-    signal(SIGINT, sigint_handler); // Register signal handler for SIGINT (Ctrl+C)
-
-
+    signal(SIGINT, sigint_handler); // Register signal handler for SIGINT (Ctrl+C)    
+    
     myData m1 = {0};
 
     // Send data to the server
     const char* data = "Hello from PC";
     send(sockfd, data, strlen(data), 0);
 
-    while (1) {
+   do {
 
         char buffer[1024];
 
@@ -92,9 +86,46 @@ int main() {
         clock_t end = clock(); // Stop the clock
         double elapsed_time = (double)(end - start); // Calculate elapsed time in mili seconds
 
-    }
+        printf("Elapsed time = %lf\n", elapsed_time);
+
+        // make a histogram of latency time
+        if(elapsed_time < 256)
+            latency_stats[(int)elapsed_time]++;
+
+        if(elapsed_time > 0)
+            total_packets++;            
+
+    } while(is_Ctrl_C);
+
+    print_statistics();
 
     closesocket(sockfd);
     WSACleanup();
     return 0;
+}
+
+
+void print_statistics(){
+
+    int remaining_latency_percent = 0;
+    // print the latency statistics
+    printf("Latency Stats (Total Packets = %d)\n", total_packets);
+    for(int i=1;i<256;i++)
+    {
+        int latency_percentage = (int)(((double)latency_stats[i]/(double)total_packets)*100.0);
+        
+        if(latency_percentage != 0) {
+            printf("%.2dms    ", i);
+            for(int k=0;k<latency_percentage;k++)
+                printf("%c", 178);
+             printf("   %d %\n", latency_percentage);
+        }
+
+        remaining_latency_percent += latency_percentage;
+    }
+
+    printf("Others: ");
+    for(int k=0;k<(100 - remaining_latency_percent);k++)
+        printf("%c", 178);
+        printf("    %d %\n", (100 - remaining_latency_percent));
 }

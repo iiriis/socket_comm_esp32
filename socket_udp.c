@@ -47,6 +47,7 @@ int main()
 
     myData m1 = {0};
 
+    //send a dummy data to notify esp32 UDP server 
     num_bytes = sendto(sockfd, (char*)"Hello I am intruder !", 22, 0, (const struct sockaddr *)&server_addr, sizeof(server_addr));
     if (num_bytes < 0) {
     perror("sendto failed");
